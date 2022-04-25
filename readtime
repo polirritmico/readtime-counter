@@ -1,0 +1,85 @@
+#!/bin/bash
+
+# ----------------------------------------------------------
+#                     READTIME COUNTER
+# ----------------------------------------------------------
+# A simple bash script to calc estimated reading time
+# Copyright (C) 04/2022 Eduardo Bray
+# https://www.github.com/polirritmico
+#
+# This is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published
+# by the Free Software Foundation version 2 of the License.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+wpm=233
+filename=$1
+
+# Colors codes
+GREEN='\033[0;32m'
+ORANGE='\033[0;33m'
+NC='\033[0m'
+
+init_message () {
+    #echo -e "${ORANGE}READTIME COUNTER${NC}"
+    #echo -e "This is free software with ABSOLUTELY NO WARRANTY.\n"
+    echo -en "Procesando fichero ${ORANGE}$filename${NC}... "
+}
+
+help () {
+    echo -e "Uso: ${GREEN}\$${NC} readtime FILENAME"
+}
+
+calc_time () {
+    word_count=$(wc -w $filename | sed -e "s/\s.*$//")
+    time_floating=$(echo "$word_count/$wpm" | bc -l)
+    time_minutes=$(echo $time_floating | sed -e "s/\..*//")
+    time_seconds=$(echo "($time_floating-$time_minutes)*60" \
+                  | bc \
+                  | awk '{print int($1+0.5)}')
+}
+
+calc_estimated () {
+    if [ $time_seconds -ge 30 ]; then
+        let time_minutes++
+    fi
+    echo -e "${GREEN}OK${NC}."
+}
+
+print_results () {
+    estimated_time="Tiempo estimado de lectura: $time_minutes minutos \
+                    ($word_count palabras)"
+    echo $estimated_time
+}
+
+# ----------------------------------------------------------
+# RUN
+
+# Check usage
+if [ "$#" -ne 1 ]; then
+    echo -e "${ORANGE}ERROR:${NC} Se espera únicamente un argumento."
+    help
+    exit 1
+fi
+
+# Check file read
+if ! [ -r $filename ]; then
+    echo -e "${ORANGE}ERROR:${NC} No se puede leer el fichero $filename."
+    exit 1
+fi
+
+init_message
+calc_time
+calc_estimated
+print_results
+
+# If xclip is present in the system copy the output to clipboard
+if command -v xclip &> /dev/null; then
+    echo $estimated_time | xclip -sel clip;
+    echo "Mensaje copiado en el portapapeles del sistema."
+fi
+
+exit 0
+
